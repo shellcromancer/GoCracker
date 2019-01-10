@@ -2,8 +2,7 @@ package main
 
 import (
     "crypto/md5"
-    //    "fmt"
-    //    "io"
+    "fmt"
     "log"
     "os"
     "sync"
@@ -22,20 +21,24 @@ var StartTime = time.Now()
 const itoa64 = "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
 func Produce(ch chan<- string, character_set []rune, k int) {
-    produce(ch, character_set, "", k)
-    close(ch)
-}
-
-func produce(ch chan<- string, character_set []rune, passwd string, k int) {
-    if k == 0 {
-        ch <- passwd
-        return
-    }
-
+    var substrings []string
     for _, runeValue := range character_set {
-        newPasswd := passwd + string(runeValue)
-        produce(ch, character_set, newPasswd, k-1)
+        ch <- string(runeValue);
+        substrings = append(substrings, string(runeValue))
     }
+    for size := 1; size < k; size++ {
+        fmt.Println(size)
+        var newSubstrings []string
+        for i := 0; i < len(substrings); i++ {
+            for _, runeValue := range character_set {
+                newSubstring := substrings[i] + string(runeValue)
+                ch <- newSubstring
+                newSubstrings = append(newSubstrings, newSubstring)
+            }
+        }
+        substrings = newSubstrings
+    }
+    close(ch)
 }
 
 func md5crypt(password, salt, magic []byte) []byte {
@@ -118,7 +121,7 @@ func consume(ch <-chan string) {
 }
 
 func main() {
-    ch := make(chan string, 100) // Buffered Channel
+    ch := make(chan string, 1000) // Buffered Channel
 
     for i := 0; i < 5; i++ {
         wg.Add(1)
