@@ -3,27 +3,25 @@ package main
 import (
     "crypto/md5"
     "fmt"
+    "gopkg.in/cheggaaa/pb.v1"
     "log"
-    "os"
     "sync"
+    "sync/atomic"
     "time"
 )
 
 var wg sync.WaitGroup
-
-var magic = "$1$"
-var salt = "hfT7jp2q"
-var md5cryptTarget = "8rU1qXqPJfSiwL8uts982."
-var md5CryptSwaps = [16]int{12, 6, 0, 13, 7, 1, 14, 8, 2, 15, 9, 3, 5, 10, 4, 11}
-var alphabet = []rune{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'}
 var StartTime = time.Now()
+var len6Target = "8rU1qXqPJfSiwL8uts982."
+var len8Target = "yKkGOHLs7BZiNuh03um670"
+var md5CryptSwaps = [16]int{12, 6, 0, 13, 7, 1, 14, 8, 2, 15, 9, 3, 5, 10, 4, 11}
 
 const itoa64 = "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
-func Produce(ch chan<- string, character_set []rune, k int) {
+func Produce(ch chan<- string, bar *pb.ProgressBar, cracks int64, character_set []rune, k int) {
     var substrings []string
     for _, runeValue := range character_set {
-        ch <- string(runeValue);
+        ch <- string(runeValue)
         substrings = append(substrings, string(runeValue))
     }
     for size := 1; size < k; size++ {
@@ -35,6 +33,8 @@ func Produce(ch chan<- string, character_set []rune, k int) {
                 ch <- newSubstring
                 newSubstrings = append(newSubstrings, newSubstring)
             }
+            currentCracks := atomic.LoadInt64(&cracks)
+            bar.Add64(currentCracks)
         }
         substrings = newSubstrings
     }
@@ -49,7 +49,6 @@ func md5crypt(password, salt, magic []byte) []byte {
     intermediate.Write(password)
     intermediate.Write(magic)
     intermediate.Write(salt)
-
     alternate.Write(password)
     alternate.Write(salt)
     alternate.Write(password)
@@ -65,9 +64,9 @@ func md5crypt(password, salt, magic []byte) []byte {
             intermediate.Write([]byte{0})
         }
     }
-
     final := intermediate.Sum(nil)
-    // Loop/ Stetching
+
+    // Stetching
     for i := 0; i < 1000; i++ {
         hasher := md5.New()
 
@@ -105,30 +104,38 @@ func md5crypt(password, salt, magic []byte) []byte {
     return append(result, itoa64[v&0x3f])
 }
 
-func consume(ch <-chan string) {
+func consume(ch <-chan string, cracks int64) {
     defer wg.Done()
 
     for pass := range ch {
         //Hash, check
-        hash := md5crypt([]byte(pass), []byte(salt), []byte(magic))
-        if string(hash) == md5cryptTarget {
+        hash := md5crypt([]byte(pass), []byte("hfT7jp2q"), []byte("$1$"))
+        atomic.AddInt64(&cracks, 1)
+        if string(hash) == len6Target || string(hash) == len8Target {
             elapsed := time.Since(StartTime)
-            log.Printf("[!] Success: The hash corresponds with %s.\n", string(pass))
-            log.Printf("Cracking took %s", elapsed)
-            os.Exit(0)
+            log.Println("[!] Success: The hash corresponds with ", string(pass))
+            log.Println("Cracking took ", elapsed)
+            log.Println("Total passwords tried: ", atomic.LoadInt64(&cracks))
         }
     }
 }
 
 func main() {
-    ch := make(chan string, 1000) // Buffered Channel
+    total := 321272406
+    bar := pb.StartNew(total)
+    bar.ShowCounters = true
+    bar.ShowTimeLeft = true
 
-    for i := 0; i < 5; i++ {
+    ch := make(chan string, 1000000000) // Buffered Channel
+    var alphabet = []rune{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'}
+    var cracks int64
+
+    for i := 0; i < 4; i++ {
         wg.Add(1)
-        go consume(ch)
+        go consume(ch, cracks)
     }
 
-    Produce(ch, alphabet, 6)
+    Produce(ch, bar, cracks, alphabet, 6)
 
     wg.Wait()
 }
