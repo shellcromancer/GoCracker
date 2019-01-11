@@ -10,6 +10,7 @@ import (
     "time"
 )
 
+var alphabet = []rune{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'}
 var wg sync.WaitGroup
 var StartTime = time.Now()
 var len6Target = "8rU1qXqPJfSiwL8uts982."
@@ -19,14 +20,38 @@ var md5CryptSwaps = [16]int{12, 6, 0, 13, 7, 1, 14, 8, 2, 15, 9, 3, 5, 10, 4, 11
 const itoa64 = "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
 func Produce(ch chan<- string, bar *pb.ProgressBar, cracks int64, character_set []rune, k int) {
-    var substrings []string
+    //var substrings []string
     for _, runeValue := range character_set {
         ch <- string(runeValue)
-        substrings = append(substrings, string(runeValue))
+        //substrings = append(substrings, string(runeValue))
     }
-    for size := 1; size < k; size++ {
-        fmt.Println(size)
-        var newSubstrings []string
+    for i := 0; i < k; i++ {
+	fmt.Println(i+1)
+	produce(ch, character_set, "", i+1)
+    /*for _, runeValue := range character_set {
+	for _, newRune := range character_set {
+	    newSubstring := string(runeValue)
+	    for size := 1; size < k; size++ {
+		newSubstring = newSubstring + string(newRune)
+		ch <- newSubstring
+		fmt.Println(newSubstring)
+	    }
+	}
+*/
+    /*for size := 1; size < k; size++ {
+	fmt.Println(size)
+	length := len(substrings)
+	for i := 0; i < length; i++ {
+	    for _, runeValue := range alphabet {
+		newSubstring := substrings[0] + string(runeValue)
+		ch <- newSubstring
+		//fmt.Println(newSubstring)
+		substrings = append(substrings, newSubstring)
+	    }
+	    substrings = substrings[1:]
+	}
+
+        /*var newSubstrings []string
         for i := 0; i < len(substrings); i++ {
             for _, runeValue := range character_set {
                 newSubstring := substrings[i] + string(runeValue)
@@ -36,9 +61,20 @@ func Produce(ch chan<- string, bar *pb.ProgressBar, cracks int64, character_set 
             currentCracks := atomic.LoadInt64(&cracks)
             bar.Add64(currentCracks)
         }
-        substrings = newSubstrings
+        substrings = newSubstrings*/
     }
-    close(ch)
+    //close(ch)
+}
+
+func produce(ch chan<- string, character_set []rune, prefix string, k int) {
+    if (k == 0) {
+	ch <- prefix
+	return
+    }
+    for _, runeValue := range character_set {
+	newPrefix := prefix + string(runeValue)
+	produce(ch, character_set, newPrefix, k - 1)
+    }
 }
 
 func md5crypt(password, salt, magic []byte) []byte {
@@ -127,15 +163,26 @@ func main() {
     bar.ShowTimeLeft = true
 
     ch := make(chan string, 1000000000) // Buffered Channel
-    var alphabet = []rune{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'}
     var cracks int64
 
-    for i := 0; i < 4; i++ {
+    for i := 0; i < 8; i++ {
         wg.Add(1)
         go consume(ch, cracks)
     }
+    /*var runeCharArr []rune
+    for i := 0; i < 24; i += 6 {
+	runeCharArr = nil
+	for j := 0; j < 7; j++ {
+	    runeCharArr = append(runeCharArr, alphabet[i+j])
+	}
+	wg.Add(1)
+	go Produce(ch, bar, cracks, runeCharArr, 8)
+    }
+    runeCharArr =  nil
 
-    Produce(ch, bar, cracks, alphabet, 6)
+    runeCharArr = append(runeCharArr, alphabet[24])
+    runeCharArr = append(runeCharArr, alphabet[25])*/
+    Produce(ch, bar, cracks, alphabet, 8)
 
     wg.Wait()
 }
