@@ -1,11 +1,9 @@
 package main
 
 import (
-    //    "fmt"
     "github.com/dstindiess/GoCracker/md5crypt"
     "log"
     "sync"
-    "sync/atomic"
     "time"
 )
 
@@ -15,7 +13,7 @@ var alphabet = []rune{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l'
 var StartTime = time.Now()
 var cracks, pws int64
 
-const CRACKING_LEN = 4
+const CRACKING_LEN = 6
 
 func Produce(ch chan<- string, character_set []rune, k int) {
     defer producers.Done()
@@ -43,19 +41,22 @@ func consume(ch <-chan string) {
     for pass := range ch {
         //Hash, check
         hash := md5crypt.Hash([]byte(pass), []byte("hfT7jp2q"), []byte("$1$"))
-        //hash := "abcdef"
-        atomic.AddInt64(&cracks, 1)
+        cracks += 1
 
         switch hash {
-        case "Vd693H7jroUcmcZV3RJ1S/":
+        case "Vd693H7jroUcmcZV3RJ1S/": // zzz
             success(pass)
-        case "/fBukIHL391IspS.gX/Eh1":
+        case "/fBukIHL391IspS.gX/Eh1": // zzzz
             success(pass)
-        case "/qzSQ8SeCQEdSg47A7VPJ/":
+        case "s7VMoznLXSQS59cu3HJ.K1": // aaaa
             success(pass)
-        case "8rU1qXqPJfSiwL8uts982.":
+        case "Y1/Ts2o08dxIcD5RMZXNI/": // aaaaa
             success(pass)
-        case "yKkGOHLs7BZiNuh03um670":
+        case "/qzSQ8SeCQEdSg47A7VPJ/": // zzzzz
+            success(pass)
+        case "8rU1qXqPJfSiwL8uts982.": // Team 1: 6 Char PW
+            success(pass)
+        case "yKkGOHLs7BZiNuh03um670": // 8 Char Challenge Password
             success(pass)
         }
     }
@@ -64,14 +65,14 @@ func consume(ch <-chan string) {
 func success(pw string) {
     elapsed := time.Since(StartTime)
     log.Println("[!] Success: The hash corresponds with ", string(pw))
-    log.Println("[!] Cracking took ", elapsed)
-    log.Println("[!] Total passwords tried: ", atomic.LoadInt64(&cracks))
+    log.Println("\t[->] Cracking took ", elapsed)
+    log.Println("\t[->] Total passwords tried: ", cracks)
 }
 
 func main() {
-    ch := make(chan string, 321272406) // Buffered Channel
+    ch := make(chan string, 67108864) // Buffered Channel
 
-    for i := 0; i < 4; i++ {
+    for i := 0; i < 15; i++ {
         consumers.Add(1)
         go consume(ch)
     }
@@ -95,8 +96,8 @@ func main() {
     producers.Wait()
     close(ch)
     elapsed := time.Since(StartTime)
-    log.Println("Passwords Generated: ", pws)
-    log.Println("Generation took ", elapsed)
+    log.Println("[#]Passwords Generated: ", pws)
+    log.Println("[#]Generation took ", elapsed)
 
     consumers.Wait()
 }
