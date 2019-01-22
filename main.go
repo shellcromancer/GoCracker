@@ -72,26 +72,13 @@ func success(pw string) {
 func main() {
     ch := make(chan string, 67108864) // Buffered Channel
 
-    for i := 0; i < 15; i++ {
+    for i := 0; i < 10; i++ {
         consumers.Add(1)
         go consume(ch)
     }
 
-    var runeCharArr []rune
-    for i := 0; i < 24; i += 6 {
-        runeCharArr = nil
-        for j := 0; j < 6; j++ {
-            runeCharArr = append(runeCharArr, alphabet[i+j])
-        }
-        producers.Add(1)
-        go Produce(ch, runeCharArr, CRACKING_LEN)
-    }
-    runeCharArr = nil
-
-    runeCharArr = append(runeCharArr, alphabet[24])
-    runeCharArr = append(runeCharArr, alphabet[25])
     producers.Add(1)
-    Produce(ch, runeCharArr, CRACKING_LEN)
+    Produce(ch, alphabet, CRACKING_LEN)
 
     producers.Wait()
     close(ch)
